@@ -4,7 +4,7 @@ use bsdiff::bspatch::patch;
 use std::fs::File;
 use std::io::{Read, Write, stdin};
 
-static USAGE: &'static str = "Usage: rspatch <oldfile> <newfile> [<patch>]";
+static USAGE: &str = "Usage: rspatch <oldfile> <newfile> [<patch>]";
 
 fn main() {
     let mut args = std::env::args_os();

@@ -28,25 +28,25 @@ fn do_patch<R: Read + Sized>(old: &[u8], cur: &mut [u8], patch: &mut R) -> Resul
     let mut ctrl = [0i64; 3];
 
     while curpos < cursize {
-        for mut c in &mut ctrl {
-            try!(patch.read_exact(&mut buf));
+        for c in &mut ctrl {
+            patch.read_exact(&mut buf)?;
             *c = to_i64(buf);
         }
         print!("cur/0 ");
-        let curend = try!(checked(curpos, ctrl[0], cursize));
-        try!(patch.read_exact(&mut cur[curpos..curend]));
-        for (o, mut c) in old[oldpos..].iter().zip(cur[curpos..curend].iter_mut()) {
+        let curend = checked(curpos, ctrl[0], cursize)?;
+        patch.read_exact(&mut cur[curpos..curend])?;
+        for (o, c) in old[oldpos..].iter().zip(cur[curpos..curend].iter_mut()) {
             *c += *o;
         }
         curpos = curend;
         print!("old/0 ");
-        oldpos = try!(checked(oldpos, ctrl[0], oldsize));
+        oldpos = checked(oldpos, ctrl[0], oldsize)?;
         print!("cur/1 ");
-        let curend = try!(checked(curpos, ctrl[1], cursize));
-        try!(patch.read_exact(&mut cur[curpos..curend]));
+        let curend = checked(curpos, ctrl[1], cursize)?;
+        patch.read_exact(&mut cur[curpos..curend])?;
         curpos = curend;
         print!("old/2 ");
-        oldpos = try!(checked(oldpos, ctrl[2], oldsize));
+        oldpos = checked(oldpos, ctrl[2], oldsize)?;
     }
     if curpos == cursize { Ok(()) } else { Err("missed some bytes".into()) }
 }
@@ -69,21 +69,21 @@ fn match_header(data: &[u8]) -> Result<HeaderType> {
 pub fn patch(old: &[u8], patch: &mut Read) -> Result<Vec<u8>> {
     // just use mut ref to reduce monomorphization bloat
     let mut header = [0u8; 16];
-    try!(patch.read_exact(&mut header));
-    let headertype = try!(match_header(&header));
+    patch.read_exact(&mut header)?;
+    let headertype = match_header(&header)?;
     let mut buf = [0u8; 8];
-    try!(patch.read_exact(&mut buf));
+    patch.read_exact(&mut buf)?;
     let curlen = to_i64(buf) as usize;
     println!("curlen = {}", curlen);
     let mut cur = vec![0; curlen];
     match headertype {
         HeaderType::Endsley => {
             let mut bz = BzDecoder::new(patch);
-            try!(do_patch(old, &mut cur, &mut bz));
+            do_patch(old, &mut cur, &mut bz)?;
         }
         HeaderType::Llogiq => {
             let mut br = brotli::Decompressor::new(patch, 16384);
-            try!(do_patch(old, &mut cur, &mut br));
+            do_patch(old, &mut cur, &mut br)?;
         }
     }
     Ok(cur)
